@@ -48,6 +48,7 @@ def initialiseTree(rweights, lweights, probab):
 def trainTree(root, trainDirectory, channel, trainingRate):
 	
 	flag 	= 0
+	left	= 0
 	counter = 1
 	images 	= os.listdir(trainDirectory)
 	for image in images:
@@ -80,22 +81,36 @@ def trainTree(root, trainDirectory, channel, trainingRate):
 
 		
 		else:
-			root.weights[0] 	= (1 - trainingRate*(lprediction - results[len(results)/2]))*root.weights[0]
-			root.weights[1] 	= 1 - root.weights[0] 
-			flag 				= 0
+			if(left == 1):
+				normaliser 		= 1.0*trainingRate*abs(lprediction - results[len(results)/2])/(255*counter)
+				normaliser		= min(normaliser, 0.99)
+				normaliser 		= max(normaliser, 0.01)
+				root.weights[0] 	= (1 - normaliser)*root.weights[0]
+				root.weights[1]		= 1 - root.weights[0]
+				flag 				= 0
+				left = 0
+				# print(root.weights)
+			else:
+				normaliser 		= 1.0*trainingRate*abs(rprediction - results[len(results)/2])/(255*counter)
+				normaliser		= min(normaliser, 0.99)
+				normaliser 		= max(normaliser, 0.01)
+				root.weights[1] 	= (1 - normaliser)*root.weights[1]
+				root.weights[0]		= 1 - root.weights[0]
+				flag 				= 0
+				left = 1
+				# print(root.weights)
 
-
-def testResults(testDirectory, patch_size, storeModels, storeResults, r, g, b):
+def testResults(testDirectory, patchSize, storeModels, storeResults, r, g, b):
 	createDir(storeResults)
 	images 	= os.listdir(testDirectory)
 	counter = 1
 
-	redTree 	= pickle.load( open( r, "rb" ) )
-	greenTree 	= pickle.load( open( g, "rb" ) )
-	blueTree 	= pickle.load( open( b, "rb" ) )
+	redTree 	= pickle.load( open(storeModels + '/' + r, "rb" ) )
+	greenTree 	= pickle.load( open(storeModels + '/' + g, "rb" ) )
+	blueTree 	= pickle.load( open(storeModels + '/' + b, "rb" ) )
 
 	for image in images:
-		print("Tested for " + str(counter) + "images out of " + str(len(images)))
+		print("Tested for " + str(counter) + " images out of " + str(len(images)))
 		counter	   	+= 1 
 		bgimg 		= cv2.imread(trainDirectory + "/" + image, 0)
 
@@ -105,7 +120,7 @@ def testResults(testDirectory, patch_size, storeModels, storeResults, r, g, b):
 			result_row = []
 			for j in range(bgimg.shape[1]):
 				
-				patch = getPatch(bgimg, i, j, patch_size)
+				patch 		= getPatch(bgimg, i, j, patchSize)
 				features 	= getFeatureImage(patch)
 				
 				redlprediction		= np.dot(redTree.left.weights, features)
@@ -114,18 +129,19 @@ def testResults(testDirectory, patch_size, storeModels, storeResults, r, g, b):
 				greenrprediction  	= np.dot(greenTree.right.weights, features)
 				bluelprediction		= np.dot(blueTree.left.weights, features)
 				bluerprediction		= np.dot(blueTree.right.weights, features)
-
 				red 	= rescale(redlprediction*redTree.weights[0] + redrprediction*redTree.weights[1])
 				green 	= rescale(greenlprediction*greenTree.weights[0] + greenrprediction*greenTree.weights[1])
 				blue 	= rescale(bluelprediction*blueTree.weights[0] + bluerprediction*blueTree.weights[1])
 				pixel_val = [red, green, blue]
-				result_row.appen(pixel_val)
+				result_row.append(pixel_val)
 			result_img.append(result_row)
 
-		cv2.imwrite(storeResults + '/' + image, result)
+		result_img = np.array(result_img)
+		
+		cv2.imwrite(storeResults + '/' + image, result_img)
 
 def getPatch(img, i, j, patchSize):
-	if(i<patch_size/2):
+	if(i<patchSize/2):
 		i = patchSize/2;
 	if(j<patchSize/2):
 		j = patchSize/2;
@@ -136,7 +152,7 @@ def getPatch(img, i, j, patchSize):
 	if(j>img.shape[1]-patchSize/2 - 1):
 		j = img.shape[0]-patchSize/2 - 1
 
-	return img[j - patchSize/2:j + patchSize/2, i - patchSize/2 : i + patchSize/2]
+	return img[j - patchSize/2:j + patchSize/2 + 1, i - patchSize/2 : i + patchSize/2 + 1]
 
 
 def getFeatureImage(img):
@@ -150,7 +166,7 @@ def pickleRes(var, name, Directory):
 
 def rescale(integ):
 	integ = max(integ, 0)
-	integ = min(iteg, 255)
+	integ = min(integ, 255)
 	return integ
 
 
@@ -169,8 +185,8 @@ if __name__ == "__main__":
 	storeModels 	= "Models"
 	lweights 		= np.random.dirichlet(np.ones(patchSize*patchSize),size=1)
 	rweights 		= np.random.dirichlet(np.ones(patchSize*patchSize),size=1)
-	probab 			= [0.5,0.5]
-	trainingRate 	= 0.001
+	probab 			= [0.5, 0.5]
+	trainingRate 	= 0.0001
 
 	redTree			= initialiseTree(rweights, lweights, probab)
 	
@@ -186,12 +202,12 @@ if __name__ == "__main__":
 
 	# createPatches(patchSize, trainDirectory, patchDirectory, pathchesImage)
 
-	# trainTree(redTree, patchDirectory, 0, trainingRate)
-	# pickleRes(redTree, 'red', storeModels)
-	# trainTree(greenTree, patchDirectory, 1, trainingRate)
-	# pickleRes(greenTree, 'green', storeModels)
-	# trainTree(blueTree, patchDirectory, 2, trainingRate)
-	# pickleRes(blueTree, 'blue', storeModels)
+	trainTree(redTree, patchDirectory, 0, trainingRate)
+	pickleRes(redTree, 'red', storeModels)
+	trainTree(greenTree, patchDirectory, 1, trainingRate)
+	pickleRes(greenTree, 'green', storeModels)
+	trainTree(blueTree, patchDirectory, 2, trainingRate)
+	pickleRes(blueTree, 'blue', storeModels)
 	testResults(testDirectory, patchSize, storeModels, storeResults, 'red.p', 'green.p', 'blue.p')
 
 	
