@@ -84,6 +84,8 @@ def trainTree(root, trainDirectory, channel, trainingRate):
 			flag 				= 0
 
 
+def testResults(img)
+
 def getFeatureImage(img):
 	return img.flatten()
 
@@ -98,21 +100,29 @@ if __name__ == "__main__":
 	trainDirectory 	= "Fishes_TRAIN"
 	testDirectory	= "Fishes_TEST"
 	patchDirectory	= "Patches"
-	# lweights 		= np.random.dirichlet(np.ones(patchSize*patchSize),size=1)
-	# rweights 		= np.random.dirichlet(np.ones(patchSize*patchSize),size=1)
-	lweights 		= np.array([0]*(patchSize*patchSize))
-	rweights 		= np.array([0]*(patchSize*patchSize))
+	lweights 		= np.random.dirichlet(np.ones(patchSize*patchSize),size=1)
+	rweights 		= np.random.dirichlet(np.ones(patchSize*patchSize),size=1)
 	probab 			= [0.5, 0.5]
 	trainingRate 	= 0.000001
 
 	redTree			= initialiseTree(rweights, lweights, probab)
+	
+	lweights 		= np.random.dirichlet(np.ones(patchSize*patchSize),size=1)
+	rweights 		= np.random.dirichlet(np.ones(patchSize*patchSize),size=1)
+	
 	greenTree 		= initialiseTree(rweights, lweights, probab)
+	
+	lweights 		= np.random.dirichlet(np.ones(patchSize*patchSize),size=1)
+	rweights 		= np.random.dirichlet(np.ones(patchSize*patchSize),size=1)
+	
 	blueTree 		= initialiseTree(rweights, lweights, probab)
 
 	# createPatches(patchSize, trainDirectory, patchDirectory, pathchesImage)
 
 	trainTree(redTree, patchDirectory, 0, trainingRate)
-	# trainTree(greenTree, patchDirectory, 1, trainingRate)
-	# trainTree(blueTree, patchDirectory, 2, trainingRate)
+	trainTree(greenTree, patchDirectory, 1, trainingRate)
+	trainTree(blueTree, patchDirectory, 2, trainingRate)
+
+	testResults(testDirectory, storeResults, redTree, greenTree, blueTree)
 
 	
