@@ -85,7 +85,7 @@ def trainTree(root, trainDirectory, channel, trainingRate):
 			flag 				= 0
 
 
-def testResults(testDirectory, storeModels, r, g, b):
+def testResults(testDirectory, patch_size, storeModels, storeResults, r, g, b):
 	createDir(storeResults)
 	images 	= os.listdir(testDirectory)
 	counter = 1
@@ -105,7 +105,7 @@ def testResults(testDirectory, storeModels, r, g, b):
 			result_row = []
 			for j in range(bgimg.shape[1]):
 				
-				patch = getPatch(bgimg, i, j)
+				patch = getPatch(bgimg, i, j, patch_size)
 				features 	= getFeatureImage(patch)
 				
 				redlprediction		= np.dot(redTree.left.weights, features)
@@ -113,9 +113,18 @@ def testResults(testDirectory, storeModels, r, g, b):
 				greenlprediction	= np.dot(greenTree.left.weights, features)
 				greenrprediction  	= np.dot(greenTree.right.weights, features)
 				bluelprediction		= np.dot(blueTree.left.weights, features)
-				bluerprediction		= np.dot(blueTree.left.weights, features)
+				bluerprediction		= np.dot(blueTree.right.weights, features)
 
-def getPatch(img, i, j):
+				red 	= rescale(redlprediction*redTree.weights[0] + redrprediction*redTree.weights[1])
+				green 	= rescale(greenlprediction*greenTree.weights[0] + greenrprediction*greenTree.weights[1])
+				blue 	= rescale(bluelprediction*blueTree.weights[0] + bluerprediction*blueTree.weights[1])
+				pixel_val = [red, green, blue]
+				result_row.appen(pixel_val)
+			result_img.append(result_row)
+
+		cv2.imwrite(storeResults + '/' + image, result)
+
+def getPatch(img, i, j, patchSize):
 	if(i<patch_size/2):
 		i = patchSize/2;
 	if(j<patchSize/2):
@@ -129,12 +138,20 @@ def getPatch(img, i, j):
 
 	return img[j - patchSize/2:j + patchSize/2, i - patchSize/2 : i + patchSize/2]
 
+
 def getFeatureImage(img):
 	return img.flatten()
+
 
 def pickleRes(var, name, Directory):
 	createDir(Directory)
 	pickle.dump(var, open(Directory + '/' + name + ".p", "wb" ) )
+
+
+def rescale(integ):
+	integ = max(integ, 0)
+	integ = min(iteg, 255)
+	return integ
 
 
 def addLists(list1, list2):
@@ -175,6 +192,6 @@ if __name__ == "__main__":
 	# pickleRes(greenTree, 'green', storeModels)
 	# trainTree(blueTree, patchDirectory, 2, trainingRate)
 	# pickleRes(blueTree, 'blue', storeModels)
-	testResults(testDirectory, patchSize, storeModels, 'red.p', 'green.p', 'blue.p')
+	testResults(testDirectory, patchSize, storeModels, storeResults, 'red.p', 'green.p', 'blue.p')
 
 	
