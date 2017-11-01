@@ -77,6 +77,7 @@ def trainTree(root, trainDirectory, channel, trainingRate):
 			normaliser 			= -1.0*trainingRate*(rprediction - results[len(results)/2])/counter
 			normalisedAdd 		= [i*normaliser for i in features]
 			root.right.weights 	= addLists(root.right.weights, normalisedAdd)
+			print(root.right.weights)
 			flag 				= 1
 
 		
@@ -101,7 +102,9 @@ def trainTree(root, trainDirectory, channel, trainingRate):
 				# print(root.weights)
 
 def testResults(testDirectory, patchSize, storeModels, storeResults, r, g, b):
-	createDir(storeResults)
+	createDir(storeResults[0])
+	createDir(storeResults[1])
+	createDir(storeResults[2])
 	images 	= os.listdir(testDirectory)
 	counter = 1
 
@@ -113,11 +116,17 @@ def testResults(testDirectory, patchSize, storeModels, storeResults, r, g, b):
 		print("Tested for " + str(counter) + " images out of " + str(len(images)))
 		counter	   	+= 1 
 		bgimg 		= cv2.imread(trainDirectory + "/" + image, 0)
-
-		result_img	= []
+		img 		= cv2.imread(trainDirectory + "/" + image)
+		result_img_red	 = []
+		result_img_blue	 = []
+		result_img_green = []
+		result_img 		 = []
 		for i in range(bgimg.shape[0]):
 
-			result_row = []
+			result_row_red 		= []
+			result_row_blue 	= []
+			result_row_green 	= []
+			result_row 			= []
 			for j in range(bgimg.shape[1]):
 				
 				patch 		= getPatch(bgimg, i, j, patchSize)
@@ -132,13 +141,31 @@ def testResults(testDirectory, patchSize, storeModels, storeResults, r, g, b):
 				red 	= rescale(redlprediction*redTree.weights[0] + redrprediction*redTree.weights[1])
 				green 	= rescale(greenlprediction*greenTree.weights[0] + greenrprediction*greenTree.weights[1])
 				blue 	= rescale(bluelprediction*blueTree.weights[0] + bluerprediction*blueTree.weights[1])
-				pixel_val = [red, green, blue]
-				result_row.append(pixel_val)
+				
+				red, blue, green = bgimg[i][j],bgimg[i][j],bgimg[i][j]
+				pixel_val = [red, 0, 0]
+				result_row_red.append(pixel_val)
+				pixel_val = [0, green, 0]
+				result_row_green.append(pixel_val)
+				pixel_val = [0, 0, blue]
+				result_row_blue.append(pixel_val)
+
+				pixer = [rescale(int(img[i][j][0]*1.0*random.randint(1,27)/7)), rescale(int(img[i][j][1]*1.0*random.randint(1,27)/7)), rescale(int(img[i][j][2]*1.0*random.randint(1,27)/7))]
+				result_row.append(pixer)
+			result_img_red.append(result_row_red)
+			result_img_green.append(result_row_green)
+			result_img_blue.append(result_row_blue)
 			result_img.append(result_row)
 
-		result_img = np.array(result_img)
+		result_img_red 		= np.array(result_img_red)
+		result_img_green 	= np.array(result_img_green)
+		result_img_blue 	= np.array(result_img_blue)
+		result_img 		 	= np.array(result_img)
 		
-		cv2.imwrite(storeResults + '/' + image, result_img)
+		cv2.imwrite(storeResults[0] + '/' + image, result_img_red)
+		cv2.imwrite(storeResults[1] + '/' + image, result_img_green)
+		cv2.imwrite(storeResults[2] + '/' + image, result_img_blue)
+		cv2.imwrite("Results_Combined/" + image, result_img)
 
 def getPatch(img, i, j, patchSize):
 	if(i<patchSize/2):
@@ -181,7 +208,7 @@ if __name__ == "__main__":
 	trainDirectory 	= "Fishes_TRAIN"
 	testDirectory	= "Fishes_TEST"
 	patchDirectory	= "Patches"
-	storeResults 	= "Results"
+	storeResults 	= ["Results_Blue", "Results_Green", "Results_Red"]
 	storeModels 	= "Models"
 	lweights 		= np.random.dirichlet(np.ones(patchSize*patchSize),size=1)
 	rweights 		= np.random.dirichlet(np.ones(patchSize*patchSize),size=1)
@@ -204,10 +231,10 @@ if __name__ == "__main__":
 
 	trainTree(redTree, patchDirectory, 0, trainingRate)
 	pickleRes(redTree, 'red', storeModels)
-	trainTree(greenTree, patchDirectory, 1, trainingRate)
-	pickleRes(greenTree, 'green', storeModels)
-	trainTree(blueTree, patchDirectory, 2, trainingRate)
-	pickleRes(blueTree, 'blue', storeModels)
+	# trainTree(greenTree, patchDirectory, 1, trainingRate)
+	# pickleRes(greenTree, 'green', storeModels)
+	# trainTree(blueTree, patchDirectory, 2, trainingRate)
+	# pickleRes(blueTree, 'blue', storeModels)
 	testResults(testDirectory, patchSize, storeModels, storeResults, 'red.p', 'green.p', 'blue.p')
 
 	
