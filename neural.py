@@ -12,8 +12,8 @@ def loss_function(image_data, bgimg_data, root, M1, M2, channel):
 	rightprobs		= []
 	for img, bgimg in zip(image_data, bgimg_data):
 		image_counter += 1
-		if(image_counter%1000 == 0):
-			print("Completed probability calculation over " + str(image_counter))
+		# if(image_counter%1000 == 0):
+		# 	print("Completed probability calculation over " + str(image_counter))
 		
 		channels	= cv2.split(img)
 		features 	= utility.getFeatureImage(bgimg)
@@ -33,7 +33,6 @@ def loss_function(image_data, bgimg_data, root, M1, M2, channel):
 
 	leftprobsum 	= sum(leftprobs)
 	rightprobsum 	= sum(rightprobs)
-
 	lossleft,lossright	= 0,0
 	for leftprob,rightprob,img,bgimg in zip(leftprobs, rightprobs, image_data, bgimg_data):
 
@@ -43,10 +42,66 @@ def loss_function(image_data, bgimg_data, root, M1, M2, channel):
 		features 	= utility.getFeatureImage(bgimg)
 		results		= utility.getFeatureImage(channels[channel])
 		result_col 	= results[(bgimg.shape[0]/2+1)*(bgimg.shape[1]/2+1)]
-		lossleft 	+= w1*pow((result_col - np.dot(M1, features)),2)
-		lossright 	+= w2*pow((result_col - np.dot(M2, features)),2)
+		lossleft 	-= w1*(np.array(result_col) - np.dot(M1, features))*features
+		lossright 	-= w2*(np.array(result_col) - np.dot(M2, features))*features
 
 	return lossleft, lossright
+
+
+def weight_loss(image_data, bgimg_data, root, M1, M2, channel):
+
+	image_counter 	= 0
+	leftprobs 		= []
+	rightprobs		= []
+	derivativesl	= []
+	derivativesr 	= []
+	for img, bgimg in zip(image_data, bgimg_data):
+		
+		image_counter += 1
+		
+		channels	= cv2.split(img)
+		features 	= utility.getFeatureImage(bgimg)
+		results		= utility.getFeatureImage(channels[channel])
+
+		lprediction	= np.add(np.dot(root.left.weights[:-1], features), root.left.weights[-1:])
+		rprediction = np.add(np.dot(root.right.weights[:-1], features), root.right.weights[-1:])
+
+		uleft 		= 1.0*lprediction
+		uright 		= 1.0*rprediction
+
+		leftprob 	= 1.0*np.exp(uleft)/(np.exp(uleft) + np.exp(uright))
+		rightprob 	= 1.0*np.exp(uright)/(np.exp(uleft) + np.exp(uright))
+		
+		mult 		= 1.0*np.exp(uleft)*np.exp(uright)/pow(np.exp(uleft) + np.exp(uright),2)
+		lderiv 		= np.append(features, 1)*mult
+		rderiv 		= np.append(features, 1)*mult
+
+		derivativesl.append(lderiv)
+		derivativesr.append(rderiv)
+
+		leftprobs.append(leftprob)
+		rightprobs.append(rightprob)
+
+	leftprobsum 	= sum(leftprobs)
+	rightprobsum 	= sum(rightprobs)
+	lderivsum		= sum(derivativesl)
+	rderivsum 		= sum(derivativesr)
+
+	lossleft,lossright	= 0,0
+	for leftprob,rightprob,img,bgimg, lderiv, rderiv in zip(leftprobs, rightprobs, image_data, bgimg_data, derivativesl, derivativesr):
+
+		w1 			= 1.0*leftprob/leftprobsum
+		w2 			= 1.0*rightprob/rightprobsum
+		channels	= cv2.split(img)
+		features 	= utility.getFeatureImage(bgimg)
+		results		= utility.getFeatureImage(channels[channel])
+		result_col 	= results[(bgimg.shape[0]/2+1)*(bgimg.shape[1]/2+1)]
+		lderivmul 	= 1.0*lderiv/leftprobsum - 1.0*lderivsum*leftprob/(leftprobsum*leftprobsum)
+		rderivmul 	= 1.0*rderiv/rightprobsum - 1.0*rderivsum*rightprob/(rightprobsum*rightprobsum)
+		lossleft 	+= 0.5*lderivsum*pow((np.array(result_col) - np.dot(M1, features)),2)
+		lossright 	+= 0.5*rderivsum*pow((np.array(result_col) - np.dot(M1, features)),2)
+	
+	return lossleft,lossright
 
 def trainTree(root, trainDirectory, channel, trainingRate, iterations):
 	
@@ -55,7 +110,7 @@ def trainTree(root, trainDirectory, channel, trainingRate, iterations):
 	image_data 	= []
 	bgimg_data 	= []
 	images 		= os.listdir(trainDirectory)
-	images 		= images[:3000]
+	images 		= images[:10000]
 
 	for image in images:
 
@@ -80,18 +135,32 @@ def trainTree(root, trainDirectory, channel, trainingRate, iterations):
 		def right_loss_now(M):
 			return loss_function(image_data, bgimg_data, root, M1, M, channel)[1]
 
-		for k in range(100):
+		for k in range(10):
 
-			print(k)
-			left_gradient 	= grad(left_loss_now)
-			M1 			  	= [i - trainingRate*left_gradient(M1) for i in M1]
+			left_gradient 	= left_loss_now(M1)
+			M1 			  	= np.add(M1, -trainingRate*left_gradient)
 			root.weights[0]	= M1
-			right_gradient 	= grad(right_loss_now)
-			M2 			  	= [i - trainingRate*right_gradient(M2) for i in M2]
+			right_gradient 	= right_loss_now(M2)
+			M2 			  	= np.add(M2, -trainingRate*right_gradient)
 			root.weights[1]	= M2
+			print("Running gradient descent for M step : " + str(k))
 
-			print(M1[0])
 
+		def weight_loss_left(root1):
+			return weight_loss(image_data, bgimg_data, root1, M1, M2, channel)[0];
+
+		def weight_loss_right(root1):
+			return weight_loss(image_data, bgimg_data, root1, M1, M2, channel)[1];
+
+		for k in range(10):
+
+			# print(root.left.weights)
+			left_gradient 		= weight_loss_left(root)
+			# print(left_gradient)
+			root.left.weights 	= np.add(root.left.weights, -0.00001*trainingRate*left_gradient)
+			right_gradient 		= weight_loss_right(root)
+			root.right.weights 	= np.add(root.right.weights, -0.00001*trainingRate*right_gradient)
+			print("Running gradient descent for weights step : " + str(k))
 
 def testResults(testDirectory, patchSize, storeModels, storeResults, r, g, b):
 	createDir(storeResults[0])

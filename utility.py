@@ -43,7 +43,7 @@ def generateM(image_data):
 
 	M = np.zeros(image_data[0].shape[0]*image_data[0].shape[1])
 	M[image_data[0].shape[0]*image_data[0].shape[1]/2 + 1]	= 1
-	return M
+	return np.array(M)
 
 
 def createDir(Directory):
