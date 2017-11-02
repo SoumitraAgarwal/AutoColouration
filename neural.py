@@ -163,9 +163,7 @@ def trainTree(root, trainDirectory, channel, trainingRate, iterations):
 			print("Running gradient descent for weights step : " + str(k))
 
 def testResults(testDirectory, patchSize, storeModels, storeResults, r, g, b):
-	createDir(storeResults[0])
-	createDir(storeResults[1])
-	createDir(storeResults[2])
+	utility.createDir(storeResults)
 	images 	= os.listdir(testDirectory)
 	counter = 1
 
@@ -176,54 +174,37 @@ def testResults(testDirectory, patchSize, storeModels, storeResults, r, g, b):
 	for image in images:
 		print("Tested for " + str(counter) + " images out of " + str(len(images)))
 		counter	   	+= 1 
-		bgimg 		= cv2.imread(trainDirectory + "/" + image, 0)
-		img 		= cv2.imread(trainDirectory + "/" + image)
-		result_img_red	 = []
-		result_img_blue	 = []
-		result_img_green = []
+		bgimg 		= cv2.imread(testDirectory + "/" + image, 0)
+		img 		= cv2.imread(testDirectory + "/" + image)
 		result_img 		 = []
 		for i in range(bgimg.shape[0]):
 
-			result_row_red 		= []
-			result_row_blue 	= []
-			result_row_green 	= []
 			result_row 			= []
 			for j in range(bgimg.shape[1]):
 				
-				patch 		= getPatch(bgimg, i, j, patchSize)
-				features 	= getFeatureImage(patch)
+				patch 		= utility.getPatch(bgimg, i, j, patchSize)
+				features 	= utility.getFeatureImage(patch)
 				
-				redlprediction		= np.dot(redTree.left.weights, features)
-				redrprediction  	= np.dot(redTree.right.weights, features)
-				greenlprediction	= np.dot(greenTree.left.weights, features)
-				greenrprediction  	= np.dot(greenTree.right.weights, features)
-				bluelprediction		= np.dot(blueTree.left.weights, features)
-				bluerprediction		= np.dot(blueTree.right.weights, features)
-				red 	= rescale(redlprediction*redTree.weights[0] + redrprediction*redTree.weights[1])
-				green 	= rescale(greenlprediction*greenTree.weights[0] + greenrprediction*greenTree.weights[1])
-				blue 	= rescale(bluelprediction*blueTree.weights[0] + bluerprediction*blueTree.weights[1])
+				redlprediction		= np.add(np.dot(redTree.left.weights[:-1], features), redTree.left.weights[-1:])
+				redrprediction  	= np.add(np.dot(redTree.right.weights[:-1], features), redTree.right.weights[-1:])
+				greenlprediction	= np.add(np.dot(greenTree.left.weights[:-1], features), greenTree.left.weights[-1:])
+				greenrprediction  	= np.add(np.dot(greenTree.right.weights[:-1], features), greenTree.right.weights[-1:])
+				bluelprediction		= np.add(np.dot(blueTree.left.weights[:-1], features), blueTree.left.weights[-1:])
+				bluerprediction		= np.add(np.dot(blueTree.right.weights[:-1], features), blueTree.right.weights[-1:])
 				
-				red, blue, green = bgimg[i][j],bgimg[i][j],bgimg[i][j]
-				pixel_val = [red, 0, 0]
-				result_row_red.append(pixel_val)
-				pixel_val = [0, green, 0]
-				result_row_green.append(pixel_val)
-				pixel_val = [0, 0, blue]
-				result_row_blue.append(pixel_val)
-
-				pixer = [rescale(int(img[i][j][0]*1.0*random.randint(1,27)/7)), rescale(int(img[i][j][1]*1.0*random.randint(1,27)/7)), rescale(int(img[i][j][2]*1.0*random.randint(1,27)/7))]
+				pred 	= 1.0*redlprediction/(redlprediction + redrprediction)
+				pblue 	= 1.0*bluelprediction/(bluelprediction + bluerprediction)
+				pgreen 	= 1.0*greenlprediction/(greenlprediction + greenrprediction)
+				
+				red 	= utility.rescale(255*(pred*np.dot(redTree.weights[0], features) + (1 - pred)*np.dot(redTree.weights[1], features)))
+				green 	= utility.rescale(255*(pgreen*np.dot(greenTree.weights[0], features) + (1 - pgreen)*np.dot(greenTree.weights[1], features)))
+				blue 	= utility.rescale(255*(pblue*np.dot(blueTree.weights[0], features) + (1 - pblue)*np.dot(blueTree.weights[1], features)))
+				
+				pixer 	= [int(red[0]), int(green[0]), int(blue[0])]
 				result_row.append(pixer)
-			result_img_red.append(result_row_red)
-			result_img_green.append(result_row_green)
-			result_img_blue.append(result_row_blue)
+
 			result_img.append(result_row)
 
-		result_img_red 		= np.array(result_img_red)
-		result_img_green 	= np.array(result_img_green)
-		result_img_blue 	= np.array(result_img_blue)
 		result_img 		 	= np.array(result_img)
-		
-		cv2.imwrite(storeResults[0] + '/' + image, result_img_red)
-		cv2.imwrite(storeResults[1] + '/' + image, result_img_green)
-		cv2.imwrite(storeResults[2] + '/' + image, result_img_blue)
-		cv2.imwrite("Results_Combined/" + image, result_img)
+		# print(result_img)		
+		cv2.imwrite( storeResults + "/" + image, result_img)
