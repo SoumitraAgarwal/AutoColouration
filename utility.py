@@ -33,7 +33,7 @@ def pickleRes(var, name, Directory):
 def rescale(integ):
 	integ = max(integ, 0)
 	integ = min(integ, 255)
-	return integ
+	return [integ]
 
 
 def addLists(list1, list2):
