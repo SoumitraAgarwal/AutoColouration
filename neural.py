@@ -82,6 +82,7 @@ def weight_loss(image_data, bgimg_data, root, M1, M2, channel):
 		leftprobs.append(leftprob)
 		rightprobs.append(rightprob)
 
+	print(leftprobs)
 	leftprobsum 	= sum(leftprobs)
 	rightprobsum 	= sum(rightprobs)
 	lderivsum		= sum(derivativesl)
@@ -135,7 +136,7 @@ def trainTree(root, trainDirectory, channel, trainingRate, iterations):
 		def right_loss_now(M):
 			return loss_function(image_data, bgimg_data, root, M1, M, channel)[1]
 
-		for k in range(10):
+		for k in range(0):
 
 			left_gradient 	= left_loss_now(M1)
 			M1 			  	= np.add(M1, -trainingRate*left_gradient)
