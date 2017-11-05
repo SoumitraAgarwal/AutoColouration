@@ -23,18 +23,18 @@ if __name__ == "__main__":
 	rb 				= rweights[0][0]*lweights[0][0]
 	trainingRate 	= 0.1
 
-	# redTree			= treemodels.initialiseTree(lweights[0], rweights[0], lb, rb)
-	# greenTree 		= treemodels.initialiseTree(lweights[0], rweights[0], lb, rb)
-	# blueTree 		= treemodels.initialiseTree(lweights[0], rweights[0], lb, rb)
+	redTree			= treemodels.initialiseTree(lweights[0], rweights[0], lb, rb)
+	greenTree 		= treemodels.initialiseTree(lweights[0], rweights[0], lb, rb)
+	blueTree 		= treemodels.initialiseTree(lweights[0], rweights[0], lb, rb)
 
 	# utility.createPatches(patchSize, trainDirectory, patchDirectory, pathchesImage)
 
-	# neural.trainTree(redTree, patchDirectory, 0, trainingRate, iterations)
-	# utility.pickleRes(redTree, 'red', storeModels)
-	# neural.trainTree(greenTree, patchDirectory, 1, trainingRate, iterations)
-	# utility.pickleRes(greenTree, 'green', storeModels)
-	# neural.trainTree(blueTree, patchDirectory, 2, trainingRate, iterations)
-	# utility.pickleRes(blueTree, 'blue', storeModels)
-	neural.testResults(testDirectory, patchSize, storeModels, storeResults, 'red.p', 'green.p', 'blue.p')
+	neural.trainTreeDirect(redTree, patchDirectory, 0, trainingRate, iterations)
+	utility.pickleRes(redTree, 'redDirect', storeModels)
+	neural.trainTree(greenTree, patchDirectory, 1, trainingRate, iterations)
+	utility.pickleRes(greenTree, 'greenDirect', storeModels)
+	neural.trainTree(blueTree, patchDirectory, 2, trainingRate, iterations)
+	utility.pickleRes(blueTree, 'blueDirect', storeModels)
+	neural.testResults(testDirectory, patchSize, storeModels, storeResults, 'redDirect.p', 'greenDirect.p', 'blueDirect.p')
 
 	
