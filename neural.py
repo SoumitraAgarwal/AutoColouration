@@ -111,7 +111,7 @@ def trainTree(root, trainDirectory, channel, trainingRate, iterations):
 	image_data 	= []
 	bgimg_data 	= []
 	images 		= os.listdir(trainDirectory)
-	images 		= images[:10000]
+	images 		= np.random.choice(images, 2000)
 
 	for image in images:
 
@@ -162,6 +162,114 @@ def trainTree(root, trainDirectory, channel, trainingRate, iterations):
 			right_gradient 		= weight_loss_right(root)
 			root.right.weights 	= np.add(root.right.weights, -0.00001*trainingRate*right_gradient)
 			print("Running gradient descent for weights step : " + str(k))
+
+
+
+def directM(root, trainDirectory, channel, image_data, bgimg_data):
+
+	image_counter 	= 0
+	leftprobs 		= []
+	rightprobs		= []
+	for img, bgimg in zip(image_data, bgimg_data):
+		
+		image_counter += 1
+		
+		channels	= cv2.split(img)
+		features 	= utility.getFeatureImage(bgimg)
+		results		= utility.getFeatureImage(channels[channel])
+
+		lprediction	= np.add(np.dot(root.left.weights[:-1], features), root.left.weights[-1:])
+		rprediction = np.add(np.dot(root.right.weights[:-1], features), root.right.weights[-1:])
+
+		uleft 		= 1.0*lprediction
+		uright 		= 1.0*rprediction
+
+		leftprob 	= 1.0*np.exp(uleft)/(np.exp(uleft) + np.exp(uright))
+		rightprob 	= 1.0*np.exp(uright)/(np.exp(uleft) + np.exp(uright))
+		
+		leftprobs.append(leftprob)
+		rightprobs.append(rightprob)
+
+	sumleftprobs = sum(leftprobs)
+	sumrightprobs = sum(rightprobs)
+	leftprobs 	= [pow(1.0*i/sumleftprobs, 0.5)[0] for i in leftprobs]
+	rightprobs 	= [pow(1.0*i/sumrightprobs, 0.5)[0] for i in rightprobs]
+
+	O1 	= np.diag(leftprobs)
+	O2	= np.diag(rightprobs)
+
+	M1	= root.weights[0]
+	M2 	= root.weights[1]
+	
+	X 	= []
+	Y 	= []
+	for leftprob,rightprob,img,bgimg in zip(leftprobs, rightprobs, image_data, bgimg_data):
+
+		channels	= cv2.split(img)
+		features 	= utility.getFeatureImage(bgimg)
+		results		= utility.getFeatureImage(channels[channel])
+		result_col 	= results[(bgimg.shape[0]/2+1)*(bgimg.shape[1]/2+1)]
+		Y.append(np.array(result_col))
+		X.append(features)
+
+	Y = np.asarray(Y)
+	X = np.asarray(X)
+
+	M1	= np.dot(np.dot(O1,Y).T, np.dot(O1,X))/np.dot(np.dot(O2,Y).T, np.dot(O2,Y))
+	print(M1.shape)
+	root.weights[0] = M1
+	M2	= np.dot(np.dot(np.linalg.inv(O2), np.dot(np.dot(O2,Y), np.dot(O2,X).T)/np.dot(np.dot(O2,Y).T, np.dot(O2,Y))), np.inv(O2))
+	root.weights[1] = M2
+
+def trainTreeDirect(root, trainDirectory, channel, trainingRate, iterations):
+	
+	flag 		= 0
+	counter 	= 1
+	image_data 	= []
+	bgimg_data 	= []
+	images 		= os.listdir(trainDirectory)
+	images 		= np.random.choice(images, 100)
+
+	for image in images:
+
+		if(counter%1000 == 0):
+			print("Preparing image list, done with " + str(counter))
+		img 		= cv2.imread(trainDirectory + "/" + image)
+		bgimg 		= cv2.imread(trainDirectory + "/" + image, 0)
+		image_data.append(img)
+		bgimg_data.append(bgimg)
+		counter += 1
+	
+		
+	directM(root, trainDirectory, channel, image_data, bgimg_data)
+	print("Updated M")
+
+
+	for counter in range(iterations):
+
+		def weight_loss_left(root1):
+			return weight_loss(image_data, bgimg_data, root1, M1, M2, channel)[0];
+
+		def weight_loss_right(root1):
+			return weight_loss(image_data, bgimg_data, root1, M1, M2, channel)[1];
+
+		for k in range(10):
+
+			# print(root.left.weights)
+			left_gradient 		= weight_loss_left(root)
+			# print(left_gradient)
+			root.left.weights 	= np.add(root.left.weights, -0.00001*trainingRate*left_gradient)
+			right_gradient 		= weight_loss_right(root)
+			root.right.weights 	= np.add(root.right.weights, -0.00001*trainingRate*right_gradient)
+			print("Running gradient descent for weights step : " + str(k))
+
+
+
+
+
+
+
+
 
 def testResults(testDirectory, patchSize, storeModels, storeResults, r, g, b):
 	utility.createDir(storeResults)
