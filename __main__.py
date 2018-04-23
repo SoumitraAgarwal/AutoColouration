@@ -15,6 +15,7 @@ if __name__ == "__main__":
 	patchDirectory	= "Patches"
 	storeResults 	= "Results"
 	storeModels 	= "Models"
+	layers 			= 5
 	lweights 		= [np.random.uniform(0,1,patchSize*patchSize)]
 	rweights 		= [np.random.uniform(0,1,patchSize*patchSize)]
 	# lweights 		= np.random.dirichlet(np.ones(patchSize*patchSize),size=1)
